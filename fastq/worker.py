@@ -6,7 +6,7 @@
 # @version :8.1
 
 """
-worker.py -- 
+worker.py -- 任务处理子进程
 """
 
 from enum import Enum

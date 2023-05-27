@@ -6,7 +6,7 @@
 # @version :8.1
 
 """
-__init__.py -- 
+queue.py -- 任务处理器注册和任务注册的装饰器，以及启动任意多个Worker子进程
 """
 
 from typing import Callable, Dict

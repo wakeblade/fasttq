@@ -6,7 +6,7 @@
 # @version :8.1
 
 """
-fastq.py -- 
+client.py -- 访问保存任务主题、任务处理器和任务队列的消息队列的客户端
 """
 
 from abc import ABC, abstractmethod
