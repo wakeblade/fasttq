@@ -51,4 +51,4 @@ if __name__ == "__main__":
 #### 参与贡献
 
 如果您觉得 [FastTQ](https://gitee.com/wakeblade/fasttq) 对您工作或者学习有价值，欢迎提供赞助。您捐赠的金额将用于团队持续完善FastQ的新功能和性能。 
-![赞赏码](https://gitee.com/wakeblade/x2trade/raw/master/zsm.jpg '赞赏码')
+![赞赏码](https://github.com/wakeblade/fasttq/assets/47707905/400be4a8-45bf-4fbe-af02-81393ae0f6e4 '赞赏码')
