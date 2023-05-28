@@ -10,6 +10,7 @@ simple.py -- 简单示例
 """
 
 import requests
+from pathlib import Path
 import sys
 sys.path.append("..")
 
@@ -18,20 +19,16 @@ from fasttq import FastQueue, RedisClient
 client = RedisClient.create("redis://localhost:6379/0")
 fq = FastQueue(client)
 
-@fq.register(topic="fetch_url")
-def fetch_url(url:str, *args):
-    res = requests.get(url)
-    print(url)
-    print("#"*80)
-    print(res.text)
-    return res.text
+@fq.register(topic="pathParse")
+def parse(path:str, *args):
+    # print(Path(path).parts)
+    return Path(path).parts
 
-@fq.topic(topic="fetch_url")
-def push_urls():
-    return [
-        "http://www.baidu.com",
-        "http://www.bing.com"
-    ]
+@fq.jobs(topic="pathParse")
+def scan(topic:str):
+    path = r"D:\data\FUTURES\1m"
+    return (str(p) for p in Path(path).rglob("*.*"))
 
 if __name__ == "__main__":
-    fq.start_workers(4, retry_delay=0.01)
+    # fasttq.pending(7, retry_delay=0.01)
+    fq.start_mp(7, retry_delay=0.01)

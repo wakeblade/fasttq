@@ -44,9 +44,9 @@ def unserialize(data:str):
 
 class Client(ABC):
 
-    default_topics_header = "fastq:topics"
-    default_handlers_header = "fastq:handlers"
-    default_jobs_header = "fastq:topic:%s"
+    default_topics_header = "fasttq:topics"
+    default_handlers_header = "fasttq:handlers"
+    default_jobs_header = "fasttq:topic:%s"
 
     conn_class:Type = None
 
@@ -105,7 +105,7 @@ class Client(ABC):
         pass
 
     @abstractmethod
-    def get_jobs(self, topic:str, len:int = 1):
+    def get_jobs(self, topic:str, chunksize:int = 1):
         pass
 
 class RedisClient(Client):
@@ -167,7 +167,7 @@ class RedisClient(Client):
         return conn.rpop(self.default_jobs_header % unserialize(topic))
 
     # 获取某个topic的待处理任务
-    def get_jobs(self, topic:str, len:int = 1):
+    def get_jobs(self, topic:str, chunksize:int = 10):
         conn = self.connect()
         header = self.default_jobs_header % unserialize(topic)
-        return [conn.rpop(header) for _ in range(len)]
+        return [conn.rpop(header) for _ in range(chunksize)]

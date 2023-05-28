@@ -23,17 +23,31 @@ class Assignor(Enum):
     RoundRobinOne = 2 # 轮询广度遍历
     RoundRobinAll = 3 # 轮询深度遍历
 
+class Pusher:
+    
+    def __init__(self, client_str:str, conn_url:str):
+        client_class = str2func(client_str)
+        self.client:Client = client_class.create(conn_url)
+
+    def push_topic(self, topic:str, jobs:list):
+        print(f"Pusher({os.getpid()}): {len(jobs)}", "#"*40)
+        return self.client.push_topic(topic, jobs)
+
+    def push_topics(self, jobs:dict):
+        print(f"Pusher({os.getpid()}): {len(jobs)}", "#"*40)
+        return self.client.push_topics(jobs)
+
 class Worker:
 
     _handlers = {}
     _jobs = defaultdict(list)
     _stop = False 
 
-    def __init__(self, client_str:str, conn_url:str, assignor:Assignor = Assignor.PriorityOne, batch:int = 1, retrys:int = 10, retry_delay:int = 1):
+    def __init__(self, client_str:str, conn_url:str, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 1, retrys:int = 10, retry_delay:int = 1):
         client_class = str2func(client_str)
         self.client:Client = client_class.create(conn_url)
         self.assignor = assignor
-        self.batch = batch 
+        self.chunksize = chunksize 
         self.retrys = retrys
         self.retry_delay = retry_delay
 
@@ -42,9 +56,9 @@ class Worker:
             return 0
         
         if len(self._jobs)<2:
-            return len(self._jobs.values())
+            return [len(self._jobs[k]) for k in self._jobs][0]
 
-        return reduce(lambda x,y:x+y, (len(jobs) for jobs in self._jobs.values()))
+        return reduce(lambda x,y:x+y, [len(self._jobs[k]) for k in self._jobs])
 
     def load_handlers(self, topic:str):
         if topic not in self._handlers:
@@ -55,7 +69,7 @@ class Worker:
     def get_jobs(self, topic:str):
         retry_times = 0
         while retry_times<self.retrys:
-            jobs = self.client.get_jobs(topic, self.batch)
+            jobs = self.client.get_jobs(topic, self.chunksize)
             if jobs is not None and len(jobs)>0:
                 return jobs
             retry_times+=1
@@ -75,8 +89,8 @@ class Worker:
     def load_jobs(self):
         topics = self.client.get_topics()
         last_priority = -1
-        last_len = 0
-        while self.len()<self.batch: 
+        while self.len()<self.chunksize: 
+            last_len = self.len()
             for topic, priority in topics:
                 if (self.assignor.value%2)==1:
                     jobs = self.get_jobs(topic)
@@ -97,25 +111,36 @@ class Worker:
         return self._jobs
 
     def work(self):
-        while not self._stop:
+        _retry_times = 0
+        while not self._stop and _retry_times<self.retrys:
             _jobs = self.load_jobs()
-            while len(_jobs)>0:
-                topic, jobs = _jobs.popitem()
-                handle, before, after = self.load_handlers(topic)
-                _result = []
-                context = before(topic) if before else None
-                for job in jobs:
-                    data, retrys, retry_delay = job["data"], int(job["retrys"]), float(job["retry_delay"])
-                    retry_times = 0
-                    while retry_times<retrys:
-                        try:
-                            rs = handle(data, context)
-                            _result.append(rs)
-                            break
-                        except:
-                            retry_times +=1
-                            time.sleep(retry_delay)
-                            continue
-                after(data, context, rs) if after else None
-            print(os.getpid(), "#"*80)
-            time.sleep(self.retry_delay)
+            if len(_jobs)<1:
+                break
+
+            topic, jobs = _jobs.popitem()
+            if len(jobs)<1:
+                time.sleep(self.retry_delay)
+                _retry_times +=1
+                print(f"Workser({os.getpid()}): _retry_times = {_retry_times}", "#"*40)
+            else:
+                _retry_times = 0
+
+            handle, before, after = self.load_handlers(topic)
+            _result = []
+            context = before(topic) if before else None
+            for job in jobs:
+                data, retrys, retry_delay = job["data"], int(job["retrys"]), float(job["retry_delay"])
+                retry_times = 0
+                while retry_times<retrys:
+                    try:
+                        rs = handle(data, context)
+                        _result.append(rs)
+                        break
+                    except:
+                        retry_times +=1
+                        time.sleep(retry_delay)
+                        print(f"Job({os.getpid()}): _retry_times = {_retry_times}", "#"*40)
+                        continue
+            after(data, context, _result) if after else None
+            print(f"Workser({os.getpid()}): {len(_result)}", "#"*40)
+        
