@@ -143,6 +143,20 @@ class FastQueue:
     #         process = self.start_pusher(client_str, conn_url, None, chunk, daemon=False)
     #         process.join()
 
+    def topic(self, topic:str, retrys:int = 1, retry_delay:float = 1.0, chunksize:int = 100):
+        def decorator(func:Callable):
+            jobs = [serialize(data, retrys, retry_delay) for data in func()]
+            for chunk in items2chunk(jobs, chunksize):
+                self.client.push_topic(topic, chunk)
+        return decorator
+
+    def topics(self, retrys:int = 1, retry_delay:float = 1.0, chunksize:int = 100):
+        def decorator(func:Callable):
+            jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in func().items()}
+            for chunk in dict2chunk(jobs, chunksize):
+                self.client.push_topics(chunk)
+        return decorator
+
     def clear_worker(self):
         # 收集死进程
         _tobekill = []

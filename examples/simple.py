@@ -6,7 +6,7 @@
 # @version :8.1
 
 """
-simple.py -- 简单示例
+simple.py -- 简单示例：采用注解方式推送任务
 """
 
 import requests
@@ -33,5 +33,14 @@ def push_urls():
         "http://www.bing.com"
     ]
 
+@fq.topics()
+def push_urls():
+    return {
+        "fetch_url":[
+            "http://www.baidu.com",
+            "http://www.bing.com"
+        ]
+    }
+
 if __name__ == "__main__":
-    fq.start_workers(4, retry_delay=0.01)
+    fq.start(4, retry_delay=0.01)

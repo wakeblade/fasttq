@@ -6,7 +6,7 @@
 # @version :8.1
 
 """
-simple.py -- 简单示例
+mp.py -- 采用注解方式多进程推送任务
 """
 
 import requests
