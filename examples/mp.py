@@ -25,7 +25,7 @@ def parse(path:str, *args):
     return Path(path).parts
 
 @fq.jobs(topic="pathParse")
-def scan(topic:str):
+def scan(topic:str, *args):
     path = r"D:\data\FUTURES\1m"
     return (str(p) for p in Path(path).rglob("*.*"))
 

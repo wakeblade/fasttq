@@ -27,7 +27,7 @@ class Pusher:
     
     def __init__(self, client_str:str, conn_url:str):
         client_class = str2func(client_str)
-        self.client:Client = client_class.create(conn_url)
+        self.client:Client = client_class(conn_url)
 
     def push_topic(self, topic:str, jobs:list):
         print(f"Pusher({os.getpid()}): {len(jobs)}", "#"*40)
@@ -42,10 +42,11 @@ class Worker:
     _handlers = {}
     _jobs = defaultdict(list)
     _stop = False 
+    _topic = None
 
     def __init__(self, client_str:str, conn_url:str, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 1, retrys:int = 10, retry_delay:int = 1):
         client_class = str2func(client_str)
-        self.client:Client = client_class.create(conn_url)
+        self.client:Client = client_class(conn_url)
         self.assignor = assignor
         self.chunksize = chunksize 
         self.retrys = retrys
@@ -61,6 +62,7 @@ class Worker:
         return reduce(lambda x,y:x+y, [len(self._jobs[k]) for k in self._jobs])
 
     def load_handlers(self, topic:str):
+        topic = topic if topic.find(b"#")<0 else topic[:topic.find(b"#")]
         if topic not in self._handlers:
             handlers = eval(self.client.get_handlers(topic))
             self._handlers[topic] = tuple(str2func(handle) for handle in handlers)
@@ -88,22 +90,35 @@ class Worker:
 
     def load_jobs(self):
         topics = self.client.get_topics()
-        last_priority = -1
+        topics_reported = self.client.get_topics_reported()
+
+        last_priority = priority = -1
         while self.len()<self.chunksize: 
             last_len = self.len()
-            for topic, priority in topics:
-                if (self.assignor.value%2)==1:
-                    jobs = self.get_jobs(topic)
-                    if jobs is not None:
-                        for job in jobs:
-                            self._jobs[topic].append(unserialize(job))
-                else:
-                    job = self.get_job(topic)
-                    if job is not None:
+            if self._topic:
+                jobs = self.get_jobs(self._topic)
+                if jobs is not None:
+                    for job in jobs:
                         self._jobs[topic].append(unserialize(job))
-                
-                if last_priority==priority or last_priority<1:
-                    continue
+            else:
+                for topic in topics:
+                    if topic not in topics_reported and topic[-1]=="@":
+                        self.client.report(topic, os.getpid())
+                        self._topic = topic
+                        break
+
+                    if (self.assignor.value%2)==1:
+                        jobs = self.get_jobs(topic)
+                        if jobs is not None:
+                            for job in jobs:
+                                self._jobs[topic].append(unserialize(job))
+                    else:
+                        job = self.get_job(topic)
+                        if job is not None:
+                            self._jobs[topic].append(unserialize(job))
+                    
+                    if last_priority==priority or last_priority<1:
+                        continue
             
             if last_len == self.len():
                 break
@@ -126,21 +141,30 @@ class Worker:
                 _retry_times = 0
 
             handle, before, after = self.load_handlers(topic)
-            _result = []
-            context = before(topic) if before else None
+
+            context = before(topic) if before else {"_result":[], "client":self.client}
             for job in jobs:
                 data, retrys, retry_delay = job["data"], int(job["retrys"]), float(job["retry_delay"])
                 retry_times = 0
                 while retry_times<retrys:
                     try:
                         rs = handle(data, context)
-                        _result.append(rs)
+                        context["_result"].append(rs)
                         break
                     except:
                         retry_times +=1
                         time.sleep(retry_delay)
                         print(f"Job({os.getpid()}): _retry_times = {_retry_times}", "#"*40)
                         continue
-            after(data, context, _result) if after else None
-            print(f"Workser({os.getpid()}): {len(_result)}", "#"*40)
+             
+            if after is not None:
+                after(data, context)
+            elif "topic" in context:
+                self.client.push_topic(context["topic"], context["_result"])
+            elif "topics" in context:
+                self.client.push_topic(context["topics"])
+            print(f"Workser({os.getpid()}): {len(context['_result'])}", "#"*40)
+        
+        if self._topic:
+            self.client.unreport(topic)
         

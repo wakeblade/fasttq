@@ -1,4 +1,4 @@
-from .client import Client, RedisClient
+from .client import Client, RedisClient, serialize
 from .queue import FastQueue
 from .worker import Worker
 

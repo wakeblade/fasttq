@@ -199,12 +199,10 @@ class FastQueue:
 
     def start(self, workers:int = 1, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 100, retrys:int = 10, retry_delay:int = 1):
         client_str = func2str(self.client)
-        conn_url = self.client.conn_params.geturl()
         self.pending(retrys, retry_delay)
-        self.start_workers(client_str, conn_url, workers, assignor, chunksize, retrys, retry_delay)
+        self.start_workers(client_str, self.client.conn_url, workers, assignor, chunksize, retrys, retry_delay)
         
     def start_mp(self, workers:int = 1, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 100, retrys:int = 10, retry_delay:int = 1):
         client_str = func2str(self.client)
-        conn_url = self.client.conn_params.geturl()
-        self.pending_mp(client_str, conn_url, retrys, retry_delay, chunksize)
-        self.start_workers(client_str, conn_url, workers, assignor, chunksize, retrys, retry_delay)
+        self.pending_mp(client_str, self.client.conn_url, retrys, retry_delay, chunksize)
+        self.start_workers(client_str, self.client.conn_url, workers, assignor, chunksize, retrys, retry_delay)
