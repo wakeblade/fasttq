@@ -30,11 +30,11 @@ class Pusher:
         self.client:Client = client_class(conn_url)
 
     def push_topic(self, topic:str, jobs:list):
-        print(f"Pusher({os.getpid()}): {len(jobs)}", "#"*40)
+        # print(f"Pusher({os.getpid()}): {len(jobs)}", "#"*40)
         return self.client.push_topic(topic, jobs)
 
     def push_topics(self, jobs:dict):
-        print(f"Pusher({os.getpid()}): {len(jobs)}", "#"*40)
+        # print(f"Pusher({os.getpid()}): {len(jobs)}", "#"*40)
         return self.client.push_topics(jobs)
 
 class Worker:
@@ -136,7 +136,7 @@ class Worker:
             if len(jobs)<1:
                 time.sleep(self.retry_delay)
                 _retry_times +=1
-                print(f"Workser({os.getpid()}): _retry_times = {_retry_times}", "#"*40)
+                # print(f"Workser({os.getpid()}): _retry_times = {_retry_times}", "#"*40)
             else:
                 _retry_times = 0
 
@@ -154,7 +154,7 @@ class Worker:
                     except:
                         retry_times +=1
                         time.sleep(retry_delay)
-                        print(f"Job({os.getpid()}): _retry_times = {_retry_times}", "#"*40)
+                        # print(f"Job({os.getpid()}): _retry_times = {_retry_times}", "#"*40)
                         continue
              
             if after is not None:
@@ -162,8 +162,8 @@ class Worker:
             elif "topic" in context:
                 self.client.push_topic(context["topic"], context["_result"])
             elif "topics" in context:
-                self.client.push_topic(context["topics"])
-            print(f"Workser({os.getpid()}): {len(context['_result'])}", "#"*40)
+                self.client.push_topics(context["topics"])
+            # print(f"Workser({os.getpid()}): {len(context['_result'])}", "#"*40)
         
         if self._topic:
             self.client.unreport(topic)

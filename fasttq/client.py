@@ -10,7 +10,7 @@ client.py -- 访问保存任务主题、任务处理器和任务队列的消息�
 """
 
 from abc import ABC, abstractmethod
-from typing import Type, Callable, List, Dict, Union
+from typing import Type, Callable, List, Dict, Union, Any
 from urllib import parse
 from redis import Redis, ConnectionPool
 import importlib
@@ -30,7 +30,7 @@ def str2func(s:str):
     module = importlib.import_module(m)
     return getattr(module, f)
 
-def serialize(data:object, retrys:int = 1, retry_delay:float = 0.01):
+def serialize(data:Any, retrys:int = 1, retry_delay:float = 0.01):
     d = dict(
         data=data if isinstance(data, str) else data.__dict__,
         retrys=retrys,

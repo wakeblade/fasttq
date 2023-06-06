@@ -172,7 +172,7 @@ class FastQueue:
             self._workers.pop(pid)
             # os.kill(pid, signal.CTRL_C_EVENT)
             if psutil.pid_exists(pid):
-                print(f"Workser({pid}): 销毁成功！", "#"*40)
+                # print(f"Workser({pid}): 销毁成功！", "#"*40)
                 oskill(pid, signal.SIGBREAK)
         
         return len(_tobekill) + len(self._workers)
@@ -191,7 +191,7 @@ class FastQueue:
             while(workers-1>len(self._workers)):
                 process = self.start_worker(client_str, conn_url, assignor, chunksize, retrys, retry_delay)
                 self._workers[process.pid] = process
-                print(f"Workser({process.pid}): 创建成功({workers}/{len(self._workers)})！", "#"*40)
+                # print(f"Workser({process.pid}): 创建成功({workers}/{len(self._workers)})！", "#"*40)
             workers = self.clear_worker()
         # for pid, process in self._workers.items():
         #     process.close()
