@@ -54,7 +54,7 @@ class FastQueue:
     def __init__(self, client:Client):
         self.client = client
         self._stop = False
-        self.getJobs = None
+        self.getJobs = []
 
     def register(self, topic:str, before:Callable = None, after:Callable = None):
         def decorator(handle:Callable):
@@ -64,32 +64,32 @@ class FastQueue:
 
     def jobs(self, topic:str = None):
         def decorator(func:Callable):
-            self.getJobs = partial(func, topic)
+            self.getJobs.append(partial(func, topic))
             return self.getJobs
         return decorator        
 
     def pending(self, retrys:int = 1, retry_delay:float = 1.0, chunksize:int = 100):
-        if self.getJobs is not None:
-            topic = self.getJobs.args[0]
+        for getJob in self.getJobs:
+            topic = getJob.args[0]
             if topic is None:
-                jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in self.getJobs().items()}
+                jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in getJob().items()}
                 for chunk in dict2chunk(jobs, chunksize):
                     self.client.push_topics(chunk)
             else:
-                jobs = [serialize(data, retrys, retry_delay) for data in self.getJobs()]
+                jobs = [serialize(data, retrys, retry_delay) for data in getJob()]
                 for chunk in items2chunk(jobs, chunksize):
                     self.client.push_topic(topic, chunk)
 
     #########################################################################################
     # 方案3.0，替换成Pool模式
     def pending_mp(self, client_str:str, conn_url:str, retrys:int = 1, retry_delay:float = 1.0, chunksize:int = 100):
-        if self.getJobs is not None:
-            topic = self.getJobs.args[0]
+        for getJob in self.getJobs:
+            topic = getJob.args[0]
             if topic is None:
-                jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in self.getJobs().items()}
+                jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in getJob().items()}
                 chunks = dict2chunk(jobs, chunksize)
             else:
-                jobs = [serialize(data, retrys, retry_delay) for data in self.getJobs()]
+                jobs = [serialize(data, retrys, retry_delay) for data in getJob()]
                 chunks = items2chunk(jobs, chunksize)
             with Pool(processes=cpu_count()) as pool:
                 for chunk in chunks:
