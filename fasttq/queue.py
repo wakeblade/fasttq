@@ -68,28 +68,28 @@ class FastQueue:
             return self.getJobs
         return decorator        
 
-    def pending(self, retrys:int = 1, retry_delay:float = 1.0, chunksize:int = 100):
+    def pending(self, retrys:int = 1, retry_delay:float = 1.0, chunksize:int = 100, **kwargs):
         for getJob in self.getJobs:
             topic = getJob.args[0]
             if topic is None:
-                jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in getJob().items()}
+                jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in getJob(**kwargs).items()}
                 for chunk in dict2chunk(jobs, chunksize):
                     self.client.push_topics(chunk)
             else:
-                jobs = [serialize(data, retrys, retry_delay) for data in getJob()]
+                jobs = [serialize(data, retrys, retry_delay) for data in getJob(**kwargs)]
                 for chunk in items2chunk(jobs, chunksize):
                     self.client.push_topic(topic, chunk)
 
     #########################################################################################
     # 方案3.0，替换成Pool模式
-    def pending_mp(self, client_str:str, conn_url:str, retrys:int = 1, retry_delay:float = 1.0, chunksize:int = 100):
+    def pending_mp(self, client_str:str, conn_url:str, retrys:int = 1, retry_delay:float = 1.0, chunksize:int = 100, **kwargs):
         for getJob in self.getJobs:
             topic = getJob.args[0]
             if topic is None:
-                jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in getJob().items()}
+                jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in getJob(**kwargs).items()}
                 chunks = dict2chunk(jobs, chunksize)
             else:
-                jobs = [serialize(data, retrys, retry_delay) for data in getJob()]
+                jobs = [serialize(data, retrys, retry_delay) for data in getJob(**kwargs)]
                 chunks = items2chunk(jobs, chunksize)
             with Pool(processes=cpu_count()) as pool:
                 for chunk in chunks:
@@ -197,12 +197,12 @@ class FastQueue:
         #     process.close()
         #     process.join()
 
-    def start(self, workers:int = 1, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 100, retrys:int = 10, retry_delay:int = 1):
+    def start(self, workers:int = 1, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 100, retrys:int = 10, retry_delay:int = 1, **kwargs):
         client_str = func2str(self.client)
-        self.pending(retrys, retry_delay)
+        self.pending(*args, retrys, retry_delay, **kwargs)
         self.start_workers(client_str, self.client.conn_url, workers, assignor, chunksize, retrys, retry_delay)
         
-    def start_mp(self, workers:int = 1, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 100, retrys:int = 10, retry_delay:int = 1):
+    def start_mp(self, workers:int = 1, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 100, retrys:int = 10, retry_delay:int = 1, **kwargs):
         client_str = func2str(self.client)
-        self.pending_mp(client_str, self.client.conn_url, retrys, retry_delay, chunksize)
+        self.pending_mp(client_str, self.client.conn_url, retrys, retry_delay, chunksize, **kwargs)
         self.start_workers(client_str, self.client.conn_url, workers, assignor, chunksize, retrys, retry_delay)

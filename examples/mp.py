@@ -21,14 +21,13 @@ fq = FastQueue(client)
 
 @fq.register(topic="pathParse")
 def parse(path:str, *args):
-    # print(Path(path).parts)
+    print(Path(path).parts)
     return Path(path).parts
 
 @fq.jobs(topic="pathParse")
-def scan(topic:str, *args):
-    path = r"D:\data\FUTURES\1m"
+def scan(topic:str, path:str):
     return (str(p) for p in Path(path).rglob("*.*"))
 
 if __name__ == "__main__":
     # fasttq.pending(7, retry_delay=0.01)
-    fq.start_mp(7, retry_delay=0.01)
+    fq.start_mp(7, path = r"D:\data\FUTURES\1m", retry_delay=0.01)
