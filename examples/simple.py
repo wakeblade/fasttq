@@ -15,7 +15,7 @@ sys.path.append("..")
 
 from fasttq import FastQueue, RedisClient
 
-client = RedisClient.create("redis://localhost:6379/0")
+client = RedisClient("redis://:000415@175.178.44.29:6379/0")
 fq = FastQueue(client)
 
 @fq.register(topic="fetch_url")

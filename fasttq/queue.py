@@ -34,7 +34,7 @@ def items2dict(items:list):
     return {k:v for k,v in items}
 
 def dict2chunk(d:dict, chunksize:int = 100):
-    return [items2dict(items) for items in items2chunk(d.items(), chunksize)]
+    return [items2dict(items) for items in items2chunk(list(d.items()), chunksize)]
 
 def start_worker(client_str:str, conn_url:str, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 0, retrys:int = 10, retry_delay:int = 1):
     worker = Worker(client_str, conn_url, assignor, chunksize, retrys, retry_delay)
@@ -72,9 +72,10 @@ class FastQueue:
         for getJob in self.getJobs:
             topic = getJob.args[0]
             if topic is None:
-                jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in getJob(**kwargs).items()}
                 for chunk in dict2chunk(jobs, chunksize):
-                    self.client.push_topics(chunk)
+                    for topic, data in chunk.items():
+                        jobs = [serialize(d, retrys, retry_delay) for d in data]
+                        self.client.push_topic(topic, jobs)
             else:
                 jobs = [serialize(data, retrys, retry_delay) for data in getJob(**kwargs)]
                 for chunk in items2chunk(jobs, chunksize):
@@ -152,9 +153,10 @@ class FastQueue:
 
     def topics(self, retrys:int = 1, retry_delay:float = 1.0, chunksize:int = 100):
         def decorator(func:Callable):
-            jobs = {topic:serialize(data, retrys, retry_delay) for topic, data in func().items()}
-            for chunk in dict2chunk(jobs, chunksize):
-                self.client.push_topics(chunk)
+            for chunk in dict2chunk(func(), chunksize):
+                for topic, data in chunk.items():
+                    jobs = [serialize(d, retrys, retry_delay) for d in data]
+                    self.client.push_topic(topic, jobs)
         return decorator
 
     def clear_worker(self):
@@ -199,7 +201,7 @@ class FastQueue:
 
     def start(self, workers:int = 1, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 100, retrys:int = 10, retry_delay:int = 1, **kwargs):
         client_str = func2str(self.client)
-        self.pending(*args, retrys, retry_delay, **kwargs)
+        self.pending(retrys, retry_delay, **kwargs)
         self.start_workers(client_str, self.client.conn_url, workers, assignor, chunksize, retrys, retry_delay)
         
     def start_mp(self, workers:int = 1, assignor:Assignor = Assignor.PriorityOne, chunksize:int = 100, retrys:int = 10, retry_delay:int = 1, **kwargs):

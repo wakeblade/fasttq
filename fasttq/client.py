@@ -32,7 +32,7 @@ def str2func(s:str):
 
 def serialize(data:Any, retrys:int = 1, retry_delay:float = 0.01):
     d = dict(
-        data=data if isinstance(data, str) else data.__dict__,
+        data=data if isinstance(data, str) else json.dumps(data),
         retrys=retrys,
         retry_delay=retry_delay
     )
@@ -40,7 +40,7 @@ def serialize(data:Any, retrys:int = 1, retry_delay:float = 0.01):
 
 def unserialize(data:str):
     s = str(data, encoding="utf8")
-    return json.loads(s) if s.startswith("{") else s
+    return json.loads(s) if s[0] in "{[" else s
 
 class Client(ABC):
 
@@ -68,7 +68,7 @@ class Client(ABC):
         pass
 
     @abstractmethod
-    def push_topics(self, jobs:Dict[str, str]):
+    def push_topics(self, jobs:Dict[str, str], retrys:int = 1, retry_delay:float = 1.0):
         pass
 
     @abstractmethod
@@ -129,7 +129,7 @@ class RedisClient(Client):
             return conn.lpush(self.default_jobs_header % topic, *jobs)
 
     # 推入多个topic的任务
-    def push_topics(self, jobs:Dict[str, str]):
+    def push_topics(self, jobs:Dict[str, List], retrys:int = 1, retry_delay:float = 1.0):
         with self.connect() as conn:
             return {topic:conn.lpush(self.default_jobs_header % topic, *_jobs) for topic,_jobs in jobs.items()}
 

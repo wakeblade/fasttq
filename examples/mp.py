@@ -16,7 +16,7 @@ sys.path.append("..")
 
 from fasttq import FastQueue, RedisClient
 
-client = RedisClient.create("redis://localhost:6379/0")
+client = RedisClient("redis://localhost:6379/0")
 fq = FastQueue(client)
 
 @fq.register(topic="pathParse")
