@@ -27,7 +27,7 @@ import requests
 
 from fasttq import FastQueue, RedisClient
 
-client = RedisClient.create("redis://localhost:6379/0")
+client = RedisClient("redis://localhost:6379/0")
 fq = FastQueue(client)
 
 @fq.register(topic="fetch_url")
@@ -53,7 +53,7 @@ if __name__ == "__main__":
 ```python
 from fasttq import FastQueue, RedisClient
 
-client = RedisClient.create("redis://localhost:6379/0")
+client = RedisClient("redis://localhost:6379/0")
 fq = FastQueue(client)
 
 @fq.register(topic="pathParse")
